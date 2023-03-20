@@ -7,11 +7,11 @@ pub struct ChunkType {
 }
 
 impl ChunkType { 
-    fn bytes(&self) -> [u8;4] {
+    pub fn bytes(&self) -> [u8;4] {
         return self.bytes;
     }
     
-    fn is_valid(&self) -> bool {
+    pub fn is_valid(&self) -> bool {
         let valid_chars: bool = self.bytes
                                     .iter()
                                     .all(|&b: &u8| (b >= b'a' && b < b'z' || (b >= b'A' && b <= b'Z')));
@@ -97,11 +97,6 @@ impl Display for ChunkTypeError {
         }
     }
 }
-
-
-
-
-
 
 #[cfg(test)]
 mod tests {
