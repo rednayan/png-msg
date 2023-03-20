@@ -1,50 +1,48 @@
-use std::convert::TryFrom;
-use std::fmt;
-use std::str::FromStr;
+use std::{convert::TryFrom, fmt::Display, str::FromStr};
 use crate::Error;
-use crate::Result;
+// use crate::Result;
 #[derive(Debug,Clone, PartialEq,Eq)]
 pub struct ChunkType {
-
+    bytes : [u8;4],
 }
 
 impl ChunkType { 
     fn bytes(&self) -> [u8;4] {
-        [1,2,4,5]
+        return self.bytes;
     }
     
     fn is_valid(&self) -> bool {
-        false
+        let valid_chars: bool = self.bytes
+                                    .iter()
+                                    .all(|&b: &u8| (b >= b'a' && b < b'z' || (b >= b'A' && b <= b'Z')));
+        
+        return valid_chars && self.is_reserved_bit_valid();
     }
     
     fn is_critical(&self) -> bool {
-        false
+        return (self.bytes[0] & 0x20) != 0x20;
     }
     
     fn is_public(&self) -> bool {
-        false
+        return (self.bytes[1] & 0x20) != 0x20;
     }
     
     fn is_reserved_bit_valid(&self) -> bool {
-        false
+        return (self.bytes[2] & 0x20) != 0x20;
     }
     
     fn is_safe_to_copy(&self) -> bool {
-        false
+        return (self.bytes[3] & 0x20) == 0x20;
     }
 }
 
 impl TryFrom<[u8;4]> for ChunkType {
     type Error = Error;
 
-    fn try_from(bytes: [u8;4]) -> Result<Self> {
-
-    }
-}
-
-impl fmt::Display for ChunkType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        
+    fn try_from(value: [u8;4]) -> std::result::Result<Self, Self::Error> {
+        Ok(Self {
+            bytes : value
+        })
     }
 }
 
@@ -52,11 +50,55 @@ impl fmt::Display for ChunkType {
 impl FromStr for ChunkType {
     type Err  = Error;
 
-    fn from_str(s: &str) -> Result<Self> {
-        
-    }
+    fn from_str(s: &str) -> Result<Self,Self::Err> {
+        let bytes_arr: &[u8] = s.as_bytes();
 
+        if bytes_arr.len() != 4 {
+            return Err(Box::new(ChunkTypeError::ByteLengthError(bytes_arr.len())));
+        }
+
+        let valid_chars = bytes_arr.iter().all(|&b| (b >= b'a' && b <= b'z' || (b >= b'A' && b <= b'Z')));
+
+        if !valid_chars {
+            return Err(Box::new(ChunkTypeError::InvalidCharacter));
+        }
+
+        let sized: [u8;4] = [bytes_arr[0],bytes_arr[1],bytes_arr[2],bytes_arr[3]];
+        Ok(ChunkType::try_from(sized)?)
+     }
 }
+
+impl std::fmt::Display for ChunkType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = std::str::from_utf8(&self.bytes).map_err(|_| std::fmt::Error)?;
+        write!(f,"{}",s)
+    }
+}
+
+
+#[derive(Debug)]
+pub enum ChunkTypeError {
+    ByteLengthError(usize),
+    InvalidCharacter
+}
+
+impl std::error::Error for ChunkTypeError {}
+
+impl Display for ChunkTypeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result  {
+        match self {
+            ChunkTypeError::ByteLengthError(actual) => write!(
+                f,
+                "Expected 4 bytes byt received {} when creating chunk type", actual
+            ),
+            ChunkTypeError::InvalidCharacter => {
+                write!(f,"Input contains one or more invalid characters")
+            }
+        }
+    }
+}
+
+
 
 
 
