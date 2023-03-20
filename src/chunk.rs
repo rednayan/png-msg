@@ -1,7 +1,9 @@
 use std::fmt::Display;
-
+use crate::{Error,Result};
 use crate::chunk_type::ChunkType;
 
+
+#[derive(Debug,PartialEq)]
 struct Chunk{
     chunk_type: ChunkType,
     data: Vec<u8>,
@@ -21,7 +23,7 @@ impl Chunk {
         return Chunk {chunk_type: chunk_type, data};
     }
 
-    pub fn length(&self) -> u32{
+    pub fn length(&self) -> usize{
         return self.data.len();
     }
 
@@ -33,16 +35,21 @@ impl Chunk {
         return &self.data;
     }
 
-    fn crc(&self) -> u32{
-
-    }
-
     fn data_as_string(&self) -> Result<String>{
-
+        let s = std::str::from_utf8(&self.data)?;
+        return Ok(s.to_string());
     }
+
+    fn crc(&self) -> u32{
+        let bytes: Vec<u8> = self.chunk_type.bytes().iter().chain(self.data.iter()).copied().collect();
+        
+    }
+
+    
 
     fn as_bytes(&self) -> Vec<u8>{
-
+        let data_length = self.length() as u32;
+        return data_length.to_be_bytes().iter().chain(self.chunk_type.bytes().iter()).chain(self.data.iter()).chain(self.crc().to_be_bytes().iter()).copied().collect();
     }
  }
 
