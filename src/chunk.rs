@@ -1,7 +1,7 @@
 use std::fmt::Display;
 use crate::{Error,Result};
 use crate::chunk_type::ChunkType;
-
+use crc::crc32::checksum_ieee;
 
 #[derive(Debug,PartialEq)]
 struct Chunk{
@@ -42,10 +42,8 @@ impl Chunk {
 
     fn crc(&self) -> u32{
         let bytes: Vec<u8> = self.chunk_type.bytes().iter().chain(self.data.iter()).copied().collect();
-        
+        checksum_ieee(&bytes)
     }
-
-    
 
     fn as_bytes(&self) -> Vec<u8>{
         let data_length = self.length() as u32;
