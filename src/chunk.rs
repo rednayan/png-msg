@@ -52,13 +52,82 @@ impl Chunk {
  }
 
 impl TryFrom<&[u8]> for Chunk{
+    type Error = Error;
+    
+    fn try_from(value: &[u8]) -> Result<Self> {
 
+        if value.len() < Chunk::METADATA_BYTES {
+            return Err(Box::from(ChunkError::InputTooSmall));
+        }
+
+        let (data_length,value) = value.split_at(Chunk::DATA_LENGTH_BYTES);
+        let data_length = u32::from_be_bytes(data_length.try_into()?) as usize;
+
+        let (chunk_type_bytes,value) = value.split_at(Chunk::CHUNK_TYPE_BYTES);
+
+        let chunk_type_bytes: [u8;4] = chunk_type_bytes.try_into()?;
+        let chunk_type: ChunkType =ChunkType::try_from(chunk_type_bytes)?;
+
+        if !chunk_type.is_valid() {
+            return Err(Box::from(ChunkError::InvalidChunkType));
+        }
+
+        let (data,value) = value.split_at(data_length);
+        let (crc_bytes, _) = value.split_at(Chunk::CRC_BYTES);
+
+        let new = Self {
+            chunk_type,
+            data: data.into(),
+        };
+
+        let actual_crc = new.crc();
+        let expected_crc = u32::from_be_bytes(crc_bytes.try_into()?);
+
+        if expected_crc != actual_crc {
+            return Err(Box::from(ChunkError::InvalidCrc(expected_crc, actual_crc)));
+        }
+        return Ok(new);
+    }
 }
 
-impl Display for Chunk{
 
+#[derive(Debug)]
+pub enum ChunkError {
+    InputTooSmall,
+    InvalidCrc(u32,u32),
+    InvalidChunkType,
 }
 
+impl std::error::Error for ChunkError {}
+
+
+impl Display for ChunkError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match *self {
+            ChunkError::InputTooSmall => {
+                write!(f, "At least 12 bytes must be supplied to construct a chunk")
+            }
+            ChunkError::InvalidCrc(expected, actual) => write!(
+                f,
+                "Invalid CRC when constructing chunk. Expected {} but found {}",
+                expected, actual
+            ),
+            ChunkError::InvalidChunkType => write!(f, "Invalid chunk type"),
+        }
+    }
+}
+
+impl std::fmt::Display for Chunk {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Chunk {{",)?;
+        writeln!(f, "  Length: {}", self.length())?;
+        writeln!(f, "  Type: {}", self.chunk_type())?;
+        writeln!(f, "  Data: {} bytes", self.data().len())?;
+        writeln!(f, "  Crc: {}", self.crc())?;
+        writeln!(f, "}}",)?;
+        Ok(())
+    }
+}
 
 #[cfg(test)]
 mod tests {
