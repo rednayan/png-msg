@@ -4,7 +4,7 @@ use crate::chunk_type::ChunkType;
 use crc::crc32::checksum_ieee;
 
 #[derive(Debug,PartialEq)]
-struct Chunk{
+pub struct Chunk{
     chunk_type: ChunkType,
     data: Vec<u8>,
 }
@@ -35,7 +35,7 @@ impl Chunk {
         return &self.data;
     }
 
-    fn data_as_string(&self) -> Result<String>{
+    pub fn data_as_string(&self) -> Result<String>{
         let s = std::str::from_utf8(&self.data)?;
         return Ok(s.to_string());
     }
@@ -45,7 +45,7 @@ impl Chunk {
         checksum_ieee(&bytes)
     }
 
-    fn as_bytes(&self) -> Vec<u8>{
+    pub fn as_bytes(&self) -> Vec<u8>{
         let data_length = self.length() as u32;
         return data_length.to_be_bytes().iter().chain(self.chunk_type.bytes().iter()).chain(self.data.iter()).chain(self.crc().to_be_bytes().iter()).copied().collect();
     }
